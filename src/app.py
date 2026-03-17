@@ -175,71 +175,71 @@ else:
     # UI Layout
     col1, col2 = st.columns([1, 1])
 
-with col1:
-    st.subheader("Constellation Diagram")
-    # Plot first 1000 samples for clarity
-    plot_samples = sig_impaired[:1000]
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=np.real(plot_samples),
-        y=np.imag(plot_samples),
-        mode='markers',
-        marker=dict(size=4, color='cyan', opacity=0.6),
-        name="Received Samples"
-    ))
-    fig.update_layout(
-        xaxis_title="In-Phase (I)",
-        yaxis_title="Quadrature (Q)",
-        width=500, height=500,
-        template="plotly_dark",
-        xaxis=dict(range=[-2, 2]),
-        yaxis=dict(range=[-2, 2])
-    )
-    st.plotly_chart(fig)
+    with col1:
+        st.subheader("Constellation Diagram")
+        # Plot first 1000 samples for clarity
+        plot_samples = sig_impaired[:1000]
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=np.real(plot_samples),
+            y=np.imag(plot_samples),
+            mode='markers',
+            marker=dict(size=4, color='cyan', opacity=0.6),
+            name="Received Samples"
+        ))
+        fig.update_layout(
+            xaxis_title="In-Phase (I)",
+            yaxis_title="Quadrature (Q)",
+            width=500, height=500,
+            template="plotly_dark",
+            xaxis=dict(range=[-2, 2]),
+            yaxis=dict(range=[-2, 2])
+        )
+        st.plotly_chart(fig)
 
-with col2:
-    st.subheader("Classification Results")
-    
-    # Hero Result
-    color = "green" if res["class"] == mod_type else "red"
-    st.markdown(f"### Predicted: <span style='color:{color}'>{res['class']}</span>", unsafe_allow_html=True)
-    st.markdown(f"#### Confidence: `{res['confidence']*100:.2f}%`")
-    
-    # Probabilities Bar Chart
-    logits = np.array(res["logits"])
-    probs = np.exp(logits) / np.sum(np.exp(logits))
-    
-    prob_fig = go.Figure(go.Bar(
-        x=MODS,
-        y=probs,
-        marker_color=['green' if m == res["class"] else 'gray' for m in MODS]
-    ))
-    prob_fig.update_layout(
-        title="Class Probabilities",
-        yaxis_title="Probability",
-        template="plotly_dark",
-        height=350
-    )
-    st.plotly_chart(prob_fig)
+    with col2:
+        st.subheader("Classification Results")
+        
+        # Hero Result
+        color = "green" if res["class"] == mod_type else "red"
+        st.markdown(f"### Predicted: <span style='color:{color}'>{res['class']}</span>", unsafe_allow_html=True)
+        st.markdown(f"#### Confidence: `{res['confidence']*100:.2f}%`")
+        
+        # Probabilities Bar Chart
+        logits = np.array(res["logits"])
+        probs = np.exp(logits) / np.sum(np.exp(logits))
+        
+        prob_fig = go.Figure(go.Bar(
+            x=MODS,
+            y=probs,
+            marker_color=['green' if m == res["class"] else 'gray' for m in MODS]
+        ))
+        prob_fig.update_layout(
+            title="Class Probabilities",
+            yaxis_title="Probability",
+            template="plotly_dark",
+            height=350
+        )
+        st.plotly_chart(prob_fig)
 
-# Metrics Section
-st.divider()
-m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+    # Metrics Section
+    st.divider()
+    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
 
-with m_col1:
-    st.metric("Estimated Energy (nJ/inf)", "4.2", help="Energy based on spike activity in SNN layers.")
-with m_col2:
-    st.metric("Throughput (Samples/sec)", "42,000", help="Inference speed on current CPU/ONNX backend.")
-with m_col3:
-    st.metric("Hardware Footprint", "Small", help="Model size < 2MB, suitable for edge deployment.")
-with m_col4:
-    if use_blind:
-        st.metric("Est. Symbol Rate", f"{res.get('est_sps', 'N/A')} SPS", delta="Locked" if 'est_sps' in res else None)
-    else:
-        st.metric("Symbol Rate", "Fixed (16)", help="App is using pre-defined symbol rate.")
+    with m_col1:
+        st.metric("Estimated Energy (nJ/inf)", "4.2", help="Energy based on spike activity in SNN layers.")
+    with m_col2:
+        st.metric("Throughput (Samples/sec)", "42,000", help="Inference speed on current CPU/ONNX backend.")
+    with m_col3:
+        st.metric("Hardware Footprint", "Small", help="Model size < 2MB, suitable for edge deployment.")
+    with m_col4:
+        if use_blind:
+            st.metric("Est. Symbol Rate", f"{res.get('est_sps', 'N/A')} SPS", delta="Locked" if 'est_sps' in res else None)
+        else:
+            st.metric("Symbol Rate", "Fixed (16)", help="App is using pre-defined symbol rate.")
 
-st.info("""
-**Major Project Insight:** Notice how the constellation 'smears' as you increase CFO or Rayleigh fading. 
-A standard CNN might struggle here, but our SNN is trained with **curriculum learning** and **augmentation** to remain robust.
-""")
+    st.info("""
+    **Major Project Insight:** Notice how the constellation 'smears' as you increase CFO or Rayleigh fading. 
+    A standard CNN might struggle here, but our SNN is trained with **curriculum learning** and **augmentation** to remain robust.
+    """)
