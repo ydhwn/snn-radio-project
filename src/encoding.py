@@ -59,26 +59,38 @@ def estimate_sps(x: np.ndarray, max_sps: int = 32):
     if x is None or x.size < max_sps * 2:
         return 16 # Default fallback
     
-    # Use magnitude for clock recovery (works for PSK/QAM)
-    mag = np.abs(x)
+    # Use magnitude squared for better peak detection (energy-based recovery)
+    mag = np.abs(x)**2
     mag = mag - np.mean(mag)
     
-    # Calculate autocorrelation
-    n = len(mag)
-    # Only need small lag range for SPS estimation
-    lags = np.arange(2, max_sps + 1)
+    # Calculate autocorrelation for a wider range to see the peak clearly
+    lags = np.arange(1, max_sps + 1)
     acf = []
     for lag in lags:
-        # Simplified autocorrelation
         r = np.mean(mag[lag:] * mag[:-lag])
         acf.append(r)
-    
-    # The first significant peak usually corresponds to the symbol period
     acf = np.array(acf)
-    peak_idx = np.argmax(acf)
-    est_sps = lags[peak_idx]
     
-    return int(est_sps)
+    # In pulse-shaped signals, the ACF starts high at lag 1 and drops.
+    # The symbol rate peak is the NEXT local maximum after this drop.
+    # We look for where the slope changes from negative to positive, then to negative again.
+    diff = np.diff(acf)
+    
+    # Find indices where slope becomes positive (start of a peak)
+    valleys = np.where(diff > 0)[0]
+    if valleys.size > 0:
+        first_valley = valleys[0]
+        # Find the max in the range after the first valley
+        remaining_acf = acf[first_valley:]
+        peak_in_remainder = np.argmax(remaining_acf)
+        peak_idx = first_valley + peak_in_remainder
+        est_sps = lags[peak_idx]
+    else:
+        # Fallback if no valley is found (likely very noisy)
+        est_sps = 16
+    
+    # Bound the result to reasonable values for this project
+    return int(np.clip(est_sps, 4, 32))
 
 def blind_sync(x: np.ndarray, sps: int):
     """
