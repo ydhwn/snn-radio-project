@@ -51,13 +51,85 @@ def _rrc(beta: float, span: int, sps: int):
     h = h / np.sqrt(np.sum(h ** 2))
     return h.astype(np.float32)
 
-def iq_to_symbol_vector(x: np.ndarray, sps: int = 16, n_symbols: int = 256, beta: float = 0.25, span: int = 8):
+def estimate_sps(x: np.ndarray, max_sps: int = 32):
+    """
+    Blindly estimates samples per symbol (SPS) using the autocorrelation 
+    of the signal magnitude.
+    """
+    if x is None or x.size < max_sps * 2:
+        return 16 # Default fallback
+    
+    # Use magnitude for clock recovery (works for PSK/QAM)
+    mag = np.abs(x)
+    mag = mag - np.mean(mag)
+    
+    # Calculate autocorrelation
+    n = len(mag)
+    # Only need small lag range for SPS estimation
+    lags = np.arange(2, max_sps + 1)
+    acf = []
+    for lag in lags:
+        # Simplified autocorrelation
+        r = np.mean(mag[lag:] * mag[:-lag])
+        acf.append(r)
+    
+    # The first significant peak usually corresponds to the symbol period
+    acf = np.array(acf)
+    peak_idx = np.argmax(acf)
+    est_sps = lags[peak_idx]
+    
+    return int(est_sps)
+
+def blind_sync(x: np.ndarray, sps: int):
+    """
+    Finds the optimal sampling offset by maximizing the variance 
+    of the sampled points (Eye-opening maximization).
+    """
+    best_offset = 0
+    max_var = -1.0
+    
+    # Try all possible offsets within one symbol period
+    for offset in range(sps):
+        samples = x[offset::sps]
+        if samples.size == 0: continue
+        
+        # For M-PSK/QAM, the variance of the magnitude is minimized 
+        # (or variance of complex points is maximized) at the ideal sample point.
+        var = np.var(np.abs(samples)) 
+        # Note: In a clean constellation, mag variance is low at symbol centers.
+        # However, for 'blind' we often look for the point where the signal 
+        # looks most like a constellation.
+        
+        # Let's use a simpler heuristic: Maximize the mean squared magnitude
+        # which often peaks at the symbol center for pulse-shaped signals.
+        pwr = np.mean(np.abs(samples)**2)
+        
+        if pwr > max_var:
+            max_var = pwr
+            best_offset = offset
+            
+    return best_offset
+
+def iq_to_symbol_vector(x: np.ndarray, sps: int = 16, n_symbols: int = 256, beta: float = 0.25, span: int = 8, blind: bool = False):
     if x is None or x.size == 0:
         return np.zeros(n_symbols * 2, dtype=np.float32)
-    h = _rrc(beta, span, sps)
-    y = np.convolve(x.astype(np.complex64), h.astype(np.float32), mode="same")
-    start = (len(h) // 2) % sps
-    samples = y[start::sps]
+    
+    actual_sps = sps
+    offset = (span * sps // 2) % sps # Default matched filter delay
+    
+    if blind:
+        # 1. Blindly estimate SPS
+        actual_sps = estimate_sps(x)
+        # 2. Perform Matched Filtering with estimated SPS
+        h = _rrc(beta, span, actual_sps)
+        y = np.convolve(x.astype(np.complex64), h.astype(np.float32), mode="same")
+        # 3. Blindly find best sampling offset
+        offset = blind_sync(y, actual_sps)
+    else:
+        h = _rrc(beta, span, sps)
+        y = np.convolve(x.astype(np.complex64), h.astype(np.float32), mode="same")
+    
+    samples = y[offset::actual_sps]
     if len(samples) < n_symbols:
         pad = np.zeros(n_symbols - len(samples), dtype=np.complex64)
         samples = np.concatenate([samples, pad])

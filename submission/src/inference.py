@@ -1,4 +1,3 @@
-import torch
 import numpy as np
 import os
 import json
@@ -6,7 +5,6 @@ import argparse
 import time
 import onnxruntime as ort
 from .encoding import iq_to_symbol_vector
-from .dataset import make_dataset
 
 # Modulation classes (standard set)
 MODS = ["BPSK", "QPSK", "8PSK", "16QAM", "16PSK", "64QAM"]
@@ -20,9 +18,11 @@ class InferenceEngine:
             self.session = ort.InferenceSession(model_path)
             self.input_name = self.session.get_inputs()[0].name
         elif backend == "ts":
+            import torch
             self.model = torch.jit.load(model_path)
             self.model.eval()
         elif backend == "pytorch":
+            import torch
             from .snn_model import SNNModulator
             # Inferred num_classes from weights later or use default 6
             self.model = SNNModulator(num_classes=6) 
@@ -31,14 +31,18 @@ class InferenceEngine:
         else:
             raise ValueError(f"Unknown backend: {backend}")
 
-    def predict(self, iq_data: np.ndarray):
+    def predict(self, iq_data: np.ndarray, blind: bool = False):
         """
         Runs inference on raw IQ data.
         iq_data: np.ndarray of complex64/128, or shape (N, 2)
         """
+        extra_info = {}
         # Feature extraction
         if iq_data.ndim == 1:
-            feat = iq_to_symbol_vector(iq_data, sps=16, n_symbols=256)
+            if blind:
+                from .encoding import estimate_sps
+                extra_info["est_sps"] = estimate_sps(iq_data)
+            feat = iq_to_symbol_vector(iq_data, sps=16, n_symbols=256, blind=blind)
             input_tensor = feat.reshape(1, -1).astype(np.float32)
         else:
             if iq_data.dtype == np.float32 and iq_data.shape[-1] == 512:
@@ -47,7 +51,7 @@ class InferenceEngine:
             else:
                 feats = []
                 for i in range(iq_data.shape[0]):
-                    f = iq_to_symbol_vector(iq_data[i], sps=16, n_symbols=256)
+                    f = iq_to_symbol_vector(iq_data[i], sps=16, n_symbols=256, blind=blind)
                     feats.append(f)
                 input_tensor = np.stack(feats).astype(np.float32)
 
@@ -56,6 +60,7 @@ class InferenceEngine:
             outputs = self.session.run(None, {self.input_name: input_tensor})
             logits = outputs[0]
         else:
+            import torch
             with torch.no_grad():
                 t_in = torch.from_numpy(input_tensor)
                 logits, spikes = self.model(t_in)
@@ -73,13 +78,15 @@ class InferenceEngine:
                 "class": MODS[cls_idx] if cls_idx < len(MODS) else f"Unknown({cls_idx})",
                 "confidence": conf,
                 "logits": logits[i].tolist(),
-                "pred_idx": int(cls_idx)
+                "pred_idx": int(cls_idx),
+                **extra_info
             }
             results.append(res)
             
         return results
 
 def run_benchmark(model_path: str, backend: str = "onnx", n_samples: int = 500):
+    from .dataset import make_dataset
     print(f"--- Benchmarking {backend} vs PyTorch ---")
     
     # 1. Load Original PyTorch Model (Baseline)

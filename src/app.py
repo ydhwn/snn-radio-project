@@ -37,6 +37,9 @@ cfo_val = st.sidebar.slider("CFO Value", 0.0, 0.1, 0.02) if use_cfo else 0.0
 use_rayleigh = st.sidebar.checkbox("Rayleigh Fading")
 rayleigh_sev = st.sidebar.slider("Rayleigh Severity", 0.0, 2.0, 1.0) if use_rayleigh else 0.0
 
+st.sidebar.header("Blind Synchronization")
+use_blind = st.sidebar.checkbox("Enable Blind Sync", help="Automatically estimates symbol rate and timing offset without prior knowledge.")
+
 # Load Model
 @st.cache_resource
 def load_engine():
@@ -76,7 +79,7 @@ sig_impaired = impair(sig, sps=sps, cfo=cfo_val, rayleigh=use_rayleigh, rayleigh
 
 # Run Inference
 # The engine expects a burst of IQ samples (1D complex array)
-res = engine.predict(sig_impaired)[0]
+res = engine.predict(sig_impaired, blind=use_blind)[0]
 
 # UI Layout
 col1, col2 = st.columns([1, 1])
@@ -131,7 +134,7 @@ with col2:
 
 # Metrics Section
 st.divider()
-m_col1, m_col2, m_col3 = st.columns(3)
+m_col1, m_col2, m_col3, m_col4 = st.columns(4)
 
 with m_col1:
     st.metric("Estimated Energy (nJ/inf)", "4.2", help="Energy based on spike activity in SNN layers.")
@@ -139,6 +142,11 @@ with m_col2:
     st.metric("Throughput (Samples/sec)", "42,000", help="Inference speed on current CPU/ONNX backend.")
 with m_col3:
     st.metric("Hardware Footprint", "Small", help="Model size < 2MB, suitable for edge deployment.")
+with m_col4:
+    if use_blind:
+        st.metric("Est. Symbol Rate", f"{res.get('est_sps', 'N/A')} SPS", delta="Locked" if 'est_sps' in res else None)
+    else:
+        st.metric("Symbol Rate", "Fixed (16)", help="App is using pre-defined symbol rate.")
 
 st.info("""
 **Major Project Insight:** Notice how the constellation 'smears' as you increase CFO or Rayleigh fading. 

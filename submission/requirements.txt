@@ -1,5 +1,8 @@
 numpy
 matplotlib
-torch
-snntorch
 scipy
+streamlit
+plotly
+pandas
+onnx
+onnxruntime

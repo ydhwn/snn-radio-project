@@ -31,14 +31,18 @@ class InferenceEngine:
         else:
             raise ValueError(f"Unknown backend: {backend}")
 
-    def predict(self, iq_data: np.ndarray):
+    def predict(self, iq_data: np.ndarray, blind: bool = False):
         """
         Runs inference on raw IQ data.
         iq_data: np.ndarray of complex64/128, or shape (N, 2)
         """
+        extra_info = {}
         # Feature extraction
         if iq_data.ndim == 1:
-            feat = iq_to_symbol_vector(iq_data, sps=16, n_symbols=256)
+            if blind:
+                from .encoding import estimate_sps
+                extra_info["est_sps"] = estimate_sps(iq_data)
+            feat = iq_to_symbol_vector(iq_data, sps=16, n_symbols=256, blind=blind)
             input_tensor = feat.reshape(1, -1).astype(np.float32)
         else:
             if iq_data.dtype == np.float32 and iq_data.shape[-1] == 512:
@@ -47,7 +51,7 @@ class InferenceEngine:
             else:
                 feats = []
                 for i in range(iq_data.shape[0]):
-                    f = iq_to_symbol_vector(iq_data[i], sps=16, n_symbols=256)
+                    f = iq_to_symbol_vector(iq_data[i], sps=16, n_symbols=256, blind=blind)
                     feats.append(f)
                 input_tensor = np.stack(feats).astype(np.float32)
 
@@ -74,7 +78,8 @@ class InferenceEngine:
                 "class": MODS[cls_idx] if cls_idx < len(MODS) else f"Unknown({cls_idx})",
                 "confidence": conf,
                 "logits": logits[i].tolist(),
-                "pred_idx": int(cls_idx)
+                "pred_idx": int(cls_idx),
+                **extra_info
             }
             results.append(res)
             
