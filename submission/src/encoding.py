@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 
 def iq_to_features(x: np.ndarray, bins: int = 128):
     if x is None or x.size == 0:
@@ -16,6 +15,7 @@ def iq_to_features(x: np.ndarray, bins: int = 128):
     return feat
 
 def features_to_spikes(feat: np.ndarray, scale: float = 10.0):
+    import torch
     if feat is None or feat.size == 0:
         return torch.zeros(1, 1, dtype=torch.float32)
     rates = np.clip(feat * scale, 0.0, scale).astype(np.float32)

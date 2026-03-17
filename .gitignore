@@ -25,6 +25,11 @@ Thumbs.db
 *.tmp
 *.swp
 
+# Build artifacts
+build/
+dist/
+*.spec
+
 # Data files (if large, consider excluding)
 # data/raw/
 # models/

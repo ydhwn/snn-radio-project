@@ -1,4 +1,3 @@
-import torch
 import numpy as np
 import os
 import json
@@ -6,7 +5,6 @@ import argparse
 import time
 import onnxruntime as ort
 from .encoding import iq_to_symbol_vector
-from .dataset import make_dataset
 
 # Modulation classes (standard set)
 MODS = ["BPSK", "QPSK", "8PSK", "16QAM", "16PSK", "64QAM"]
@@ -20,9 +18,11 @@ class InferenceEngine:
             self.session = ort.InferenceSession(model_path)
             self.input_name = self.session.get_inputs()[0].name
         elif backend == "ts":
+            import torch
             self.model = torch.jit.load(model_path)
             self.model.eval()
         elif backend == "pytorch":
+            import torch
             from .snn_model import SNNModulator
             # Inferred num_classes from weights later or use default 6
             self.model = SNNModulator(num_classes=6) 
@@ -56,6 +56,7 @@ class InferenceEngine:
             outputs = self.session.run(None, {self.input_name: input_tensor})
             logits = outputs[0]
         else:
+            import torch
             with torch.no_grad():
                 t_in = torch.from_numpy(input_tensor)
                 logits, spikes = self.model(t_in)
@@ -80,6 +81,7 @@ class InferenceEngine:
         return results
 
 def run_benchmark(model_path: str, backend: str = "onnx", n_samples: int = 500):
+    from .dataset import make_dataset
     print(f"--- Benchmarking {backend} vs PyTorch ---")
     
     # 1. Load Original PyTorch Model (Baseline)
