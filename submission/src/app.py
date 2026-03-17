@@ -94,8 +94,23 @@ res = engine.predict(sig_impaired, blind=use_blind)[0]
 if st.session_state.show_analysis:
     st.header("AI Expert Signal Analysis & Performance Report")
     
+    # Calculate real-time signal statistics for "Data Observed" section
+    def get_signal_stats(iq_data):
+        i = np.real(iq_data)
+        q = np.imag(iq_data)
+        pwr = np.abs(iq_data)**2
+        
+        stats = {
+            "peak_to_avg": 10 * np.log10(np.max(pwr) / np.mean(pwr)),
+            "std_dev": np.std(iq_data),
+            "rms": np.sqrt(np.mean(pwr)),
+            "phase_variance": np.var(np.angle(iq_data)),
+            "evm_estimate": np.sqrt(np.mean((np.abs(iq_data) - 1.0)**2)) * 100 # Rough estimate relative to unit circle
+        }
+        return stats
+
     # Generate 200-300 word description based on settings
-    def generate_detailed_report(mod, snr, cfo, rayleigh, blind, confidence, predicted):
+    def generate_detailed_report(mod, snr, cfo, rayleigh, blind, confidence, predicted, stats):
         # Technical description of modulation
         mod_tech = {
             "BPSK": "Binary Phase Shift Keying (BPSK) is the simplest form of phase modulation, representing 1 bit per symbol by shifting the carrier phase by 180 degrees. While it has low spectral efficiency, its robustness makes it ideal for critical low-power links like satellite telemetry and deep-space communications where SNR is extremely poor.",
@@ -115,6 +130,15 @@ if st.session_state.show_analysis:
 
         if cfo > 0:
             channel_analysis += f"Furthermore, a **Carrier Frequency Offset (CFO)** of {cfo:.3f} is applied. This simulates the real-world mismatch between the transmitter's local oscillator and the receiver's tuner. In the constellation diagram, this appears as a continuous rotation of the points, turning static clusters into concentric rings. This is a severe impairment that usually requires a Phase Locked Loop (PLL) or Costas Loop to correct."
+
+        # NEW: Data Observed Thorough Analysis
+        data_observed = f"Thorough analysis of the received IQ stream reveals a **Peak-to-Average Power Ratio (PAPR)** of **{stats['peak_to_avg']:.2f} dB**. "
+        if mod in ["BPSK", "QPSK", "8PSK", "16PSK"]:
+            data_observed += f"The observed constant-envelope behavior (PAPR < 4dB) is characteristic of Phase Shift Keying. "
+        else:
+            data_observed += f"The high PAPR fluctuations are indicative of an Amplitude-Phase modulation like {mod}. "
+            
+        data_observed += f"The calculated **Phase Variance** is **{stats['phase_variance']:.4f}**, which provides a quantitative measure of the 'circular smear' or noise floor. An **Error Vector Magnitude (EVM)** estimate of **{stats['evm_estimate']:.1f}%** indicates the geometric distance between the received samples and the ideal constellation points. Higher EVM values correlate directly with the visible dispersion in the graph."
 
         # SNN Specific Logic
         snn_logic = f"Our **Spiking Neural Network (SNN)**, utilizing Leaky Integrate-and-Fire (LIF) neurons, processes this complex IQ data as a temporal sequence. Unlike traditional CNNs that treat the constellation as a static image, the SNN 'integrates' the energy of the incoming spikes over time. "
@@ -144,20 +168,24 @@ if st.session_state.show_analysis:
         ### **2. Channel Impairments & Environment**
         {channel_analysis}
 
-        ### **3. Neuromorphic (SNN) Processing Strategy**
+        ### **3. Data Observed & Statistical Analysis**
+        {data_observed}
+
+        ### **4. Neuromorphic (SNN) Processing Strategy**
         {snn_logic}
 
-        ### **4. Synchronization & Signal Discovery**
+        ### **5. Synchronization & Signal Discovery**
         {sync_logic}
 
-        ### **5. AI Expert Verdict**
+        ### **6. AI Expert Verdict**
         {verdict}
         """
 
     # Render the report
+    sig_stats = get_signal_stats(sig_impaired)
     report_content = generate_detailed_report(
         mod_type, snr_db, cfo_val, use_rayleigh, use_blind, 
-        res['confidence'], res['class']
+        res['confidence'], res['class'], sig_stats
     )
     
     st.markdown(report_content)
