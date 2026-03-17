@@ -50,8 +50,8 @@ def load_engine():
         return None
     
     try:
-        # Force the backend to ONNX
-        return InferenceEngine(model_path, backend="onnx")
+        # Force the backend to ONNX and use versioning to clear cache
+        return InferenceEngine(model_path, backend="onnx", version="1.1")
     except Exception as e:
         st.error(f"Failed to load ONNX model: {e}")
         return None

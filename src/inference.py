@@ -10,9 +10,10 @@ from .encoding import iq_to_symbol_vector
 MODS = ["BPSK", "QPSK", "8PSK", "16QAM", "16PSK", "64QAM"]
 
 class InferenceEngine:
-    def __init__(self, model_path: str, backend: str = "onnx"):
+    def __init__(self, model_path: str, backend: str = "onnx", version: str = "1.1"):
         self.backend = backend
         self.model_path = model_path
+        self.version = version
         
         if backend == "onnx":
             self.session = ort.InferenceSession(model_path)
