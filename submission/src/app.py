@@ -19,7 +19,7 @@ from src.inference import InferenceEngine, MODS
 # Page Config
 st.set_page_config(page_title="SNN Radio - Live Demo", layout="wide")
 
-st.title("📡 Energy-Efficient SNN Modulation Classifier")
+st.title("Energy-Efficient SNN Modulation Classifier")
 st.markdown("""
 This live demo demonstrates an **Energy-Efficient Spiking Neural Network (SNN)** for real-time modulation classification in cognitive radio.
 As a final year E&TC project, it showcases the bridge between **Digital Signal Processing** and **Neuromorphic AI**.
@@ -41,9 +41,9 @@ st.sidebar.header("Blind Synchronization")
 use_blind = st.sidebar.checkbox("Enable Blind Sync", help="Automatically estimates symbol rate and timing offset without prior knowledge.")
 
 st.sidebar.divider()
-if st.sidebar.button("🔬 Generate AI Analysis Report", use_container_width=True):
+if st.sidebar.button("Generate AI Analysis Report", use_container_width=True):
     st.session_state.show_analysis = True
-if st.sidebar.button("🏠 Back to Live Dashboard", use_container_width=True):
+if st.sidebar.button("Back to Live Dashboard", use_container_width=True):
     st.session_state.show_analysis = False
 
 if 'show_analysis' not in st.session_state:
@@ -92,7 +92,7 @@ res = engine.predict(sig_impaired, blind=use_blind)[0]
 
 # --- MAIN PAGE CONTENT ---
 if st.session_state.show_analysis:
-    st.header("🔬 AI Expert Signal Analysis & Performance Report")
+    st.header("AI Expert Signal Analysis & Performance Report")
     
     # Generate 200-300 word description based on settings
     def generate_detailed_report(mod, snr, cfo, rayleigh, blind, confidence, predicted):
@@ -164,9 +164,9 @@ if st.session_state.show_analysis:
     
     # Word count check (for user requirement)
     word_count = len(report_content.split())
-    st.caption(f"📊 Report Length: ~{word_count} words technical analysis.")
+    st.caption(f"Report Length: ~{word_count} words technical analysis.")
 
-    if st.button("⬅️ Return to Live Dashboard"):
+    if st.button("Return to Live Dashboard"):
         st.session_state.show_analysis = False
         st.rerun()
 
