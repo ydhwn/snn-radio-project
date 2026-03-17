@@ -40,6 +40,15 @@ rayleigh_sev = st.sidebar.slider("Rayleigh Severity", 0.0, 2.0, 1.0) if use_rayl
 st.sidebar.header("Blind Synchronization")
 use_blind = st.sidebar.checkbox("Enable Blind Sync", help="Automatically estimates symbol rate and timing offset without prior knowledge.")
 
+st.sidebar.divider()
+if st.sidebar.button("🔬 Generate AI Analysis Report", use_container_width=True):
+    st.session_state.show_analysis = True
+if st.sidebar.button("🏠 Back to Live Dashboard", use_container_width=True):
+    st.session_state.show_analysis = False
+
+if 'show_analysis' not in st.session_state:
+    st.session_state.show_analysis = False
+
 # Load Model
 @st.cache_resource
 def load_engine():
@@ -81,8 +90,90 @@ sig_impaired = impair(sig, sps=sps, cfo=cfo_val, rayleigh=use_rayleigh, rayleigh
 # The engine expects a burst of IQ samples (1D complex array)
 res = engine.predict(sig_impaired, blind=use_blind)[0]
 
-# UI Layout
-col1, col2 = st.columns([1, 1])
+# --- MAIN PAGE CONTENT ---
+if st.session_state.show_analysis:
+    st.header("🔬 AI Expert Signal Analysis & Performance Report")
+    
+    # Generate 200-300 word description based on settings
+    def generate_detailed_report(mod, snr, cfo, rayleigh, blind, confidence, predicted):
+        # Technical description of modulation
+        mod_tech = {
+            "BPSK": "Binary Phase Shift Keying (BPSK) is the simplest form of phase modulation, representing 1 bit per symbol by shifting the carrier phase by 180 degrees. While it has low spectral efficiency, its robustness makes it ideal for critical low-power links like satellite telemetry and deep-space communications where SNR is extremely poor.",
+            "QPSK": "Quadrature Phase Shift Keying (QPSK) utilizes four distinct phases to encode 2 bits per symbol, effectively doubling the bandwidth efficiency of BPSK. It is the backbone of modern wireless standards including 4G LTE, 5G NR, and DVB-S2, providing an optimal trade-off between power efficiency and data throughput.",
+            "8PSK": "8-Phase Shift Keying (8PSK) encodes 3 bits per symbol by dividing the phase circle into 45-degree increments. It offers higher spectral efficiency than QPSK but requires approximately 3-4 dB more SNR to maintain the same Bit Error Rate (BER), making it suitable for high-quality satellite links.",
+            "16QAM": "16-Quadrature Amplitude Modulation (16-QAM) combines both amplitude and phase shifts to represent 4 bits per symbol. By using a 4x4 rectangular grid, it achieves high data rates. However, because the points are closer together, it is more susceptible to noise and non-linear distortions from power amplifiers.",
+            "16PSK": "16-Phase Shift Keying (16PSK) provides 4 bits per symbol using only phase transitions. While it has a constant envelope (helpful for non-linear amplifiers), it is significantly more sensitive to phase noise and oscillator jitter compared to 16-QAM, often limiting its use in practical high-speed systems.",
+            "64QAM": "64-Quadrature Amplitude Modulation (64-QAM) is a high-order modulation scheme encoding 6 bits per symbol. It is used in Wi-Fi 6 and 5G to achieve multi-gigabit speeds, but it requires a very clean channel (SNR > 25 dB) as the 64 constellation points are packed tightly, making them vulnerable to even slight noise."
+        }
+
+        # Analysis of channel conditions
+        channel_analysis = ""
+        if rayleigh:
+            channel_analysis += f"The signal is currently undergoing **Rayleigh Fading**, which simulates a multi-path environment where the signal reaches the receiver through various reflections (buildings, mountains). This causes 'fades' or deep drops in signal power. Combined with an SNR of {snr} dB, the SNN must identify the modulation signature even when the amplitude is fluctuating wildly. "
+        else:
+            channel_analysis += f"The channel is currently modeled as **AWGN (Additive White Gaussian Noise)** at {snr} dB. In this scenario, the noise is purely additive and Gaussian, which primarily impacts the 'cloudiness' of the constellation points without affecting the signal's phase rotation or amplitude envelope consistency. "
+
+        if cfo > 0:
+            channel_analysis += f"Furthermore, a **Carrier Frequency Offset (CFO)** of {cfo:.3f} is applied. This simulates the real-world mismatch between the transmitter's local oscillator and the receiver's tuner. In the constellation diagram, this appears as a continuous rotation of the points, turning static clusters into concentric rings. This is a severe impairment that usually requires a Phase Locked Loop (PLL) or Costas Loop to correct."
+
+        # SNN Specific Logic
+        snn_logic = f"Our **Spiking Neural Network (SNN)**, utilizing Leaky Integrate-and-Fire (LIF) neurons, processes this complex IQ data as a temporal sequence. Unlike traditional CNNs that treat the constellation as a static image, the SNN 'integrates' the energy of the incoming spikes over time. "
+        if snr < 5:
+            snn_logic += "At this low SNR, the SNN relies on its temporal memory to filter out high-frequency noise spikes, essentially performing a non-linear integration that identifies the underlying modulation pattern even when it is invisible to the human eye. "
+        else:
+            snn_logic += "In these clearer conditions, the SNN achieves extremely low latency, as the neurons reach their firing threshold rapidly due to the high-energy, distinct symbols. "
+
+        # Blind Sync Logic
+        sync_logic = ""
+        if blind:
+            sync_logic = "The **Blind Synchronization** engine is active, performing 'Clock Recovery' without any pilot signals. It uses a Delay-and-Multiply spectral line technique (FFT-based) to estimate the Samples Per Symbol (SPS). This allows the AI to 'see' the signal structure even if the transmitter's symbol rate is unknown, a core requirement for Electronic Intelligence (ELINT) and Cognitive Radio."
+        else:
+            sync_logic = "The system is currently in **Aided Mode**, assuming the receiver knows the exact symbol rate (16 SPS). This is typical for standard consumer hardware but lacks the flexibility of autonomous signal discovery provided by Blind Sync."
+
+        # Conclusion
+        verdict = f"The AI has concluded with **{confidence*100:.1f}% confidence** that the signal is **{predicted}**. "
+        if predicted == mod:
+            verdict += "This matches the ground truth, demonstrating the robustness of the neuromorphic approach against the selected impairments."
+        else:
+            verdict += "The AI has misclassified the signal, likely due to the extreme combination of noise and frequency offset overpowering the learned temporal features."
+
+        return f"""
+        ### **1. Modulation Analysis: {mod}**
+        {mod_tech[mod]}
+
+        ### **2. Channel Impairments & Environment**
+        {channel_analysis}
+
+        ### **3. Neuromorphic (SNN) Processing Strategy**
+        {snn_logic}
+
+        ### **4. Synchronization & Signal Discovery**
+        {sync_logic}
+
+        ### **5. AI Expert Verdict**
+        {verdict}
+        """
+
+    # Render the report
+    report_content = generate_detailed_report(
+        mod_type, snr_db, cfo_val, use_rayleigh, use_blind, 
+        res['confidence'], res['class']
+    )
+    
+    st.markdown(report_content)
+    
+    # Word count check (for user requirement)
+    word_count = len(report_content.split())
+    st.caption(f"📊 Report Length: ~{word_count} words technical analysis.")
+
+    if st.button("⬅️ Return to Live Dashboard"):
+        st.session_state.show_analysis = False
+        st.rerun()
+
+else:
+    # --- ORIGINAL DASHBOARD CONTENT ---
+    # UI Layout
+    col1, col2 = st.columns([1, 1])
 
 with col1:
     st.subheader("Constellation Diagram")
