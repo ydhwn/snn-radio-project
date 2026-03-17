@@ -1,0 +1,14 @@
+Accuracy: 0.8462
+Total Spikes (hidden): 701008
+Estimated Energy per inference (nJ): 2804.03
+Intel Loihi: bits=9, cores=128, neurons/core=1024, est_energy_nJ=3154.54
+BrainChip Akida: bits=4, cores=384, neurons/core=4096, est_energy_nJ=1402.02
+SpiNNaker: bits=16, cores=864, neurons/core=1024, est_energy_nJ=5608.06
+Per-class metrics (precision, recall, F1):
+BPSK: P=0.936, R=0.992, F1=0.964
+QPSK: P=0.848, R=0.808, F1=0.828
+8PSK: P=0.833, R=0.810, F1=0.821
+16QAM: P=0.805, R=0.821, F1=0.813
+16PSK: P=0.846, R=0.817, F1=0.832
+64QAM: P=0.806, R=0.828, F1=0.817
+Macro-F1: 0.846

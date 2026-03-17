@@ -1,0 +1,19 @@
+# Exclude virtual environments
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Exclude raw reports (the exported models in /deploy are enough)
+reports/
+submission/
+tests/
+
+# Exclude git and IDE files
+.git/
+.gitignore
+.vscode/
+.idea/

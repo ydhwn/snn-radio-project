@@ -1,0 +1,33 @@
+# Virtual environments
+.venv/
+.venv39/
+.venv310/
+.venv311/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+
+# Data files (if large, consider excluding)
+# data/raw/
+# models/
+
+# Third party
+# third_party/
