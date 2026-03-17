@@ -53,44 +53,45 @@ def _rrc(beta: float, span: int, sps: int):
 
 def estimate_sps(x: np.ndarray, max_sps: int = 32):
     """
-    Blindly estimates samples per symbol (SPS) using the autocorrelation 
-    of the signal magnitude.
+    Blindly estimates samples per symbol (SPS) using the FFT of the 
+    magnitude squared (Delay-and-Multiply method).
     """
-    if x is None or x.size < max_sps * 2:
+    if x is None or x.size < 128:
         return 16 # Default fallback
     
-    # Use magnitude squared for better peak detection (energy-based recovery)
-    mag = np.abs(x)**2
-    mag = mag - np.mean(mag)
+    # 1. Non-linear operation to generate spectral line at symbol rate
+    # For PSK/QAM, |x|^2 contains a strong component at 1/T
+    mag_sq = np.abs(x)**2
+    mag_sq = mag_sq - np.mean(mag_sq)
     
-    # Calculate autocorrelation for a wider range to see the peak clearly
-    lags = np.arange(1, max_sps + 1)
-    acf = []
-    for lag in lags:
-        r = np.mean(mag[lag:] * mag[:-lag])
-        acf.append(r)
-    acf = np.array(acf)
+    # 2. Perform FFT to find the spectral line
+    N = len(mag_sq)
+    # Use next power of 2 for faster/better FFT
+    N_fft = 1 << (N - 1).bit_length()
+    f_axis = np.fft.fftfreq(N_fft)
+    X_f = np.abs(np.fft.fft(mag_sq, n=N_fft))
     
-    # In pulse-shaped signals, the ACF starts high at lag 1 and drops.
-    # The symbol rate peak is the NEXT local maximum after this drop.
-    # We look for where the slope changes from negative to positive, then to negative again.
-    diff = np.diff(acf)
+    # 3. Only look at the positive frequency range corresponding to SPS [4, 32]
+    # Frequency f = 1/SPS, so search range is [1/32, 1/4]
+    min_f = 1.0 / 32.0
+    max_f = 1.0 / 4.0
     
-    # Find indices where slope becomes positive (start of a peak)
-    valleys = np.where(diff > 0)[0]
-    if valleys.size > 0:
-        first_valley = valleys[0]
-        # Find the max in the range after the first valley
-        remaining_acf = acf[first_valley:]
-        peak_in_remainder = np.argmax(remaining_acf)
-        peak_idx = first_valley + peak_in_remainder
-        est_sps = lags[peak_idx]
-    else:
-        # Fallback if no valley is found (likely very noisy)
-        est_sps = 16
+    mask = (f_axis >= min_f) & (f_axis <= max_f)
+    if not np.any(mask):
+        return 16
+        
+    search_f = f_axis[mask]
+    search_vals = X_f[mask]
     
-    # Bound the result to reasonable values for this project
-    return int(np.clip(est_sps, 4, 32))
+    # 4. Find the peak frequency
+    peak_idx = np.argmax(search_vals)
+    best_f = search_f[peak_idx]
+    
+    # 5. Convert frequency back to SPS
+    est_sps = 1.0 / best_f
+    
+    # Round to nearest integer and bound
+    return int(np.round(np.clip(est_sps, 4, 32)))
 
 def blind_sync(x: np.ndarray, sps: int):
     """
