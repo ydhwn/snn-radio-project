@@ -140,6 +140,23 @@ if st.session_state.show_analysis:
             
         data_observed += f"The calculated **Phase Variance** is **{stats['phase_variance']:.4f}**, which provides a quantitative measure of the 'circular smear' or noise floor. An **Error Vector Magnitude (EVM)** estimate of **{stats['evm_estimate']:.1f}%** indicates the geometric distance between the received samples and the ideal constellation points. Higher EVM values correlate directly with the visible dispersion in the graph."
 
+        # NEW: Visual Graph Observations (DIRECT ANALYSIS OF THE CHART)
+        visual_obs = "Analyzing the **Constellation Diagram** displayed on the dashboard: "
+        if cfo > 0:
+            visual_obs += f"The AI observes a clear **circular rotation** or 'ring' pattern in the graph. This visual smear is a direct result of the {cfo:.3f} CFO, which rotates the IQ clusters away from their ideal coordinates. "
+        elif rayleigh:
+            visual_obs += "The graph shows a **diffuse, cloud-like dispersion** where the points are scattered toward the origin. This 'fading' look is the AI's visual signature for Rayleigh multi-path interference. "
+        elif snr < 10:
+            visual_obs += "The constellation points are almost completely obscured by a **dense noise cloud**, making the original geometry invisible to the naked eye. "
+        else:
+            visual_obs += "The points appear as **distinct, localized clusters**, indicating high signal integrity and a clearly defined geometric structure. "
+
+        visual_obs += f"Furthermore, looking at the **Class Probabilities bar chart**, the AI shows a {'dominant' if confidence > 0.7 else 'split'} distribution. "
+        if confidence < 0.6:
+            visual_obs += "The presence of multiple competing bars indicates the SNN is visually 'uncertain' due to the overlap in signal features caused by the current channel stress. "
+        else:
+            visual_obs += f"The clear peak at {predicted} demonstrates that the SNN has successfully locked onto the temporal 'spiking pattern' of the signal despite the visual distortions."
+
         # SNN Specific Logic
         snn_logic = f"Our **Spiking Neural Network (SNN)**, utilizing Leaky Integrate-and-Fire (LIF) neurons, processes this complex IQ data as a temporal sequence. Unlike traditional CNNs that treat the constellation as a static image, the SNN 'integrates' the energy of the incoming spikes over time. "
         if snr < 5:
@@ -168,16 +185,19 @@ if st.session_state.show_analysis:
         ### **2. Channel Impairments & Environment**
         {channel_analysis}
 
-        ### **3. Data Observed & Statistical Analysis**
+        ### **3. Visual Graph Observations**
+        {visual_obs}
+
+        ### **4. Data Observed & Statistical Analysis**
         {data_observed}
 
-        ### **4. Neuromorphic (SNN) Processing Strategy**
+        ### **5. Neuromorphic (SNN) Processing Strategy**
         {snn_logic}
 
-        ### **5. Synchronization & Signal Discovery**
+        ### **6. Synchronization & Signal Discovery**
         {sync_logic}
 
-        ### **6. AI Expert Verdict**
+        ### **7. AI Expert Verdict**
         {verdict}
         """
 
