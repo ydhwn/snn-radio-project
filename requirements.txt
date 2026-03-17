@@ -1,5 +1,6 @@
 numpy
 matplotlib
+--find-links https://download.pytorch.org/whl/cpu
 torch
 snntorch
 scipy
