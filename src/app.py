@@ -41,18 +41,18 @@ rayleigh_sev = st.sidebar.slider("Rayleigh Severity", 0.0, 2.0, 1.0) if use_rayl
 # Load Model
 @st.cache_resource
 def load_engine():
-    # Prefer ONNX for demo speed, fallback to PyTorch
+    # For cloud deployment, we rely ONLY on the lightweight ONNX model
     model_path = "deploy/model.onnx"
-    if os.path.exists(model_path):
+    if not os.path.exists(model_path):
+        st.error(f"Critical Error: ONNX model not found at {model_path}. Please ensure it's in the GitHub repo.")
+        return None
+    
+    try:
+        # Force the backend to ONNX
         return InferenceEngine(model_path, backend="onnx")
-    
-    pt_path = "reports/best/snn_radio.pt"
-    if not os.path.exists(pt_path):
-        pt_path = "reports/snn_radio.pt"
-    
-    if os.path.exists(pt_path):
-        return InferenceEngine(pt_path, backend="pytorch")
-    return None
+    except Exception as e:
+        st.error(f"Failed to load ONNX model: {e}")
+        return None
 
 engine = load_engine()
 
