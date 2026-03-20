@@ -171,12 +171,6 @@ if st.session_state.show_analysis:
         else:
             sync_logic = "The system is currently in **Aided Mode**, assuming the receiver knows the exact symbol rate (16 SPS). This is typical for standard consumer hardware but lacks the flexibility of autonomous signal discovery provided by Blind Sync."
 
-        # NEW: FPGA & Hardware Implementation Strategy
-        fpga_logic = "To move from software to a **Real-World E&TC Product**, the SNN logic must be implemented on an FPGA (Field Programmable Gate Array). "
-        fpga_logic += "Our 'Spiking Neuron' is designed to be hardware-efficient. In RTL (Verilog), the LIF neuron requires only a single accumulator (adder) and a simple shift-register for leakage, unlike traditional CNNs that need power-hungry DSP multipliers. "
-        fpga_logic += "By deploying this SNN onto a Xilinx or Intel FPGA, we can process millions of IQ samples per second with a power consumption of less than 100mW, enabling this technology to be embedded in portable, battery-powered electronic warfare or cognitive radio devices. "
-        fpga_logic += "**Hardware-in-the-Loop (HIL) Status:** The FPGA project folder [hardware/fpga/hdl](file:///c:/Users/KIIT/Desktop/asl/x/hardware/fpga/hdl) contains the top-level SNN architecture for synthesis. Using the provided Python-to-FPGA data bridge, the current signal can be streamed directly to your physical board for real-time hardware classification."
-
         # Conclusion
         verdict = f"The AI has concluded with **{confidence*100:.1f}% confidence** that the signal is **{predicted}**. "
         if predicted == mod:
@@ -203,10 +197,7 @@ if st.session_state.show_analysis:
         ### **6. Synchronization & Signal Discovery**
         {sync_logic}
 
-        ### **7. FPGA & Hardware Implementation**
-        {fpga_logic}
-
-        ### **8. AI Expert Verdict**
+        ### **7. AI Expert Verdict**
         {verdict}
         """
 
