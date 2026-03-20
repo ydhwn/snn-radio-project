@@ -91,8 +91,9 @@ The proposed system classifies six major modulation schemes: BPSK, QPSK, 8PSK, 1
 8.  **CHAPTER 5: RESULT ANALYSIS AND DISCUSSION** ................................ 26
     *   5.1 Results Obtained (Graphs and Charts) ........................... 26
     *   5.2 Analysis and Discussion ........................................ 28
-    *   5.3 Project Demonstration .......................................... 29
-9.  **CHAPTER 6: CONCLUSIVE REMARKS** ............................................ 30
+    *   5.3 Technical Failure Analysis: 16-QAM vs QPSK ..................... 29
+    *   5.4 Project Demonstration .......................................... 30
+9.  **CHAPTER 6: CONCLUSIVE REMARKS** ............................................ 31
     *   6.1 Project Planning and Management ................................ 30
     *   6.2 Conclusion ..................................................... 34
     *   6.3 Further Plan of Action ......................................... 35
@@ -169,6 +170,18 @@ The AI Expert Analysis confirms that the SNN maintain high confidence (>85%) in 
 
 ### 5.2 Analysis and Discussion
 Thorough analysis of the received IQ stream reveals that **Peak-to-Average Power Ratio (PAPR)** is the primary feature used to distinguish between constant-envelope (PSK) and variable-envelope (QAM) modulations.
+
+### 5.3 Technical Failure Analysis: 16-QAM vs QPSK
+A critical observation in this project is the AI's classification behavior under extreme channel stress. Specifically, at an SNR of 10 dB with a high Carrier Frequency Offset (CFO) of 0.05, 16-QAM signals are often misclassified as QPSK. This failure is technically logical due to three primary factors:
+
+1.  **Quadrant Collapse**: 16-QAM distributes 4 points per quadrant in a grid. Under high noise and Rayleigh fading, these 4 points "smear" and merge into a single noisy blob per quadrant. Mathematically, this resultant distribution (4 blobs, one per quadrant) is identical to a heavily impaired QPSK signal.
+2.  **CFO Ring Effect**: High frequency offset causes the constellation points to rotate over time. In 16-QAM, this rotation creates three distinct concentric rings. At low SNR, these rings merge into a single circular smear that destroys the rectangular grid geometry, causing the SNN to "fall back" to the simpler QPSK model.
+3.  **SNR Sensitivity Bounds**: 16-QAM requires higher signal integrity (typically >18 dB SNR) for accurate cluster separation. At 10 dB, the noise floor exceeds the distance between 16-QAM points, making QPSK—a more robust modulation—the more statistically probable guess for the neural network.
+
+This analysis demonstrates the **Performance Bounds** of the neuromorphic classifier and provides a clear path for future work in implementing adaptive thresholding or phase-locked loops for impairment mitigation.
+
+### 5.4 Project Demonstration
+The project is demonstrated through a live web application that processes synthetic IQ signals with real-time impairments. The SNN's internal spike integrate-and-fire process is visualized through confidence scores and probability charts, allowing for a transparent look into the AI's decision-making process.
 
 ---
 
